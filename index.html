@@ -2,1031 +2,645 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-
-<meta name="viewport"
-      content="width=device-width,
-               initial-scale=1.0,
-               maximum-scale=1.0,
-               user-scalable=no">
-
-<title>Check Live</title>
+<title>Trending Academy | Live System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
 
 <style>
+/* ================= ভেরিয়েবল ও রিসেট ================= */
+:root {
+  --bg-dark: #030014;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --neon-green: #00ff87;
+  --neon-blue: #60efff;
+  --neon-purple: #b026ff;
+  --text-main: #ffffff;
+  --text-muted: #8b92a5;
+}
 
 * {
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-}
-
-html,
-body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-
-    overflow: hidden !important;
-
-    background: #fff;
-    overscroll-behavior: none;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
-    position: fixed;
-
-    left: 0;
-    top: 0;
-    right: 0;
-    bottom: 0;
+  min-height: 100vh;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-dark);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: clamp(15px, 3vw, 40px);
+  overflow-x: hidden;
+  position: relative;
+  color: var(--text-main);
 }
 
-
-/* =========================
-   WEBVIEW
-========================= */
-
-.webview {
-    position: fixed;
-
-    left: 0;
-    top: 0;
-
-    width: 100%;
-    height: var(--screen-height);
-
-    overflow: hidden !important;
-
-    background: #fff;
-    overscroll-behavior: none;
+/* ================= অ্যানিমেটেড ব্যাকগ্রাউন্ড ================= */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #02000a;
 }
 
-
-/* =========================
-   WEBSITE
-========================= */
-
-iframe {
-    position: absolute;
-
-    left: 0;
-    top: -29%;
-
-    width: 100%;
-    height: 500%;
-
-    border: 0;
-
-    display: block;
-
-    overflow: hidden !important;
-
-    overscroll-behavior: none;
+.aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.6;
+  animation: floatAurora 20s infinite alternate ease-in-out;
 }
 
+.aurora.a1 { width: 60vw; height: 60vw; background: #00ff87; top: -20%; left: -10%; }
+.aurora.a2 { width: 50vw; height: 50vw; background: #60efff; bottom: -20%; right: -10%; animation-delay: -5s; }
+.aurora.a3 { width: 45vw; height: 45vw; background: #b026ff; top: 40%; left: 30%; animation-delay: -10s; }
 
-/* =========================
-   FIXED OVERLAY
-========================= */
+@keyframes floatAurora {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(5vw, 5vh) scale(1.1); }
+  100% { transform: translate(-5vw, 10vh) scale(0.9); }
+}
 
-.hide-bottom {
-    position: absolute;
+.grid-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  mask-image: radial-gradient(circle at center, black 10%, transparent 80%);
+  -webkit-mask-image: radial-gradient(circle at center, black 10%, transparent 80%);
+  pointer-events: none;
+}
 
-    left: 0;
-    right: 0;
+/* ================= টোস্ট নোটিফিকেশন ================= */
+#toast {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: rgba(0, 255, 135, 0.15);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 255, 135, 0.5);
+  color: var(--neon-green);
+  padding: 12px 28px;
+  border-radius: 50px;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 9999;
+  box-shadow: 0 10px 30px rgba(0, 255, 135, 0.2);
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+  opacity: 0;
+  white-space: nowrap; /* ১ লাইনে রাখার জন্য */
+}
 
-    top: var(--overlay-top);
+#toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
 
-    height: calc(
-        var(--screen-height) - var(--overlay-top)
-    );
+/* ================= মেইন কন্টেইনার ================= */
+.main-container {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 850px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(15px, 3vw, 25px);
+}
 
-    background:
-        linear-gradient(
-            180deg,
-            #ffffff 0%,
-            #fbfcff 100%
-        );
+/* ================= হেডার ================= */
+.header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: slideDown 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
 
-    z-index: 9999;
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
-    overflow: hidden;
+.brand-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: clamp(24px, 4vw, 36px);
+  font-weight: 900;
+  letter-spacing: 2px;
+  background: linear-gradient(90deg, #fff, var(--neon-blue), var(--neon-green), #fff);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shineText 4s linear infinite;
+}
 
-    display: flex;
+@keyframes shineText {
+  to { background-position: 300% center; }
+}
 
+.verified-badge {
+  width: clamp(20px, 3vw, 28px);
+  height: clamp(20px, 3vw, 28px);
+  fill: var(--neon-blue);
+  filter: drop-shadow(0 0 10px rgba(96, 239, 255, 0.8));
+  animation: pulseBadge 2s ease-in-out infinite;
+}
+
+@keyframes pulseBadge {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.brand-subtitle {
+  font-size: clamp(10px, 1.5vw, 13px);
+  color: var(--text-muted);
+  letter-spacing: 6px;
+  text-transform: uppercase;
+  font-weight: 600;
+  margin-top: 5px;
+  margin-bottom: 12px;
+}
+
+/* লাইভ স্ট্যাটাস ব্যাজ (সবুজ রঙ) */
+.live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(34, 197, 94, 0.1); /* সবুজ ব্যাকগ্রাউন্ড */
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  padding: 5px 14px;
+  border-radius: 50px;
+  color: #22c55e; /* সবুজ টেক্সট */
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  background: #22c55e; /* সবুজ ডট */
+  border-radius: 50%;
+  box-shadow: 0 0 10px #22c55e;
+  animation: blinkGreen 1.5s infinite;
+}
+
+@keyframes blinkGreen {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.8); }
+}
+
+/* ================= কনটেন্ট কার্ড ================= */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 30px;
+  padding: clamp(20px, 4vw, 40px);
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: fadeUp 0.8s 0.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(15px, 3vw, 25px);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= ডিসপ্লে সেকশন ================= */
+.display-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(15px, 3vw, 25px);
+}
+
+.display-box {
+  position: relative;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 24px;
+  padding: clamp(15px, 3vw, 25px);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ক্লিক টু কপি টেক্সট */
+.click-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  pointer-events: none;
+  transition: 0.3s;
+}
+.display-box:hover .click-hint {
+  color: var(--neon-green);
+  text-shadow: 0 0 10px rgba(0, 255, 135, 0.5);
+}
+
+.display-box::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  padding: 2px;
+  background: linear-gradient(45deg, transparent, transparent);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  transition: 0.4s;
+  opacity: 0.5;
+}
+
+.name-box::before { background: linear-gradient(45deg, var(--neon-green), transparent); }
+.number-box::before { background: linear-gradient(45deg, var(--neon-blue), transparent); }
+
+.display-box:hover {
+  transform: translateY(-5px) scale(1.02);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+}
+
+.display-box:active {
+  transform: scale(0.96);
+}
+
+.label {
+  font-size: clamp(10px, 1.5vw, 13px);
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 15px;
+  margin-top: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  opacity: 0.8;
+}
+
+.name-box .label { color: var(--neon-green); }
+.number-box .label { color: var(--neon-blue); }
+
+.value-text {
+  font-size: clamp(28px, 5vw, 48px);
+  font-weight: 900;
+  line-height: 1.2;
+  word-break: break-word;
+  letter-spacing: -0.5px;
+  transition: 0.3s;
+}
+
+.name-box .value-text {
+  color: #fff;
+  text-shadow: 0 0 20px rgba(0, 255, 135, 0.4);
+}
+
+.number-box .value-text {
+  font-size: clamp(20px, 3.5vw, 36px);
+  color: #fff;
+  text-shadow: 0 0 20px rgba(96, 239, 255, 0.4);
+}
+
+.pop {
+  animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.6); opacity: 0; filter: blur(4px); }
+  50% { transform: scale(1.08); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ================= অ্যাকশন বাটন ================= */
+.action-buttons {
+  display: flex;
+  gap: clamp(15px, 3vw, 20px);
+  margin-top: 10px;
+}
+
+.btn {
+  flex: 1;
+  position: relative;
+  padding: clamp(14px, 2.5vw, 18px) 20px;
+  border: none;
+  border-radius: 18px;
+  font-size: clamp(13px, 1.8vw, 16px);
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+  text-transform: uppercase;
+}
+
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, transparent 100%);
+  opacity: 0;
+  transition: 0.3s;
+}
+
+.btn:hover {
+  transform: translateY(-3px);
+}
+
+.btn:hover::after { opacity: 1; }
+.btn:active { transform: scale(0.95); }
+
+.btn-name {
+  background: linear-gradient(135deg, #059669, #10b981);
+  box-shadow: 0 10px 25px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+.btn-number {
+  background: linear-gradient(135deg, #2563eb, #06b6d4);
+  box-shadow: 0 10px 25px rgba(6, 182, 212, 0.3), inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* ================= ফুটার (২ লাইন) ================= */
+.footer {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  animation: fadeUp 0.8s 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.footer-powered {
+  font-size: clamp(9px, 1.2vw, 11px);
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.footer-company {
+  font-size: clamp(12px, 1.8vw, 15px);
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, #94a3b8, #ffffff, #94a3b8);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shineText 3s linear infinite;
+}
+
+/* ================= রেসপন্সিভ ================= */
+@media (max-width: 700px) {
+  .display-section {
+    grid-template-columns: 1fr;
+  }
+  .glass-card {
+    padding: 20px 15px;
+  }
+  .action-buttons {
     flex-direction: column;
-
-    align-items: center;
-
-    padding:
-        clamp(6px, 1.4vh, 13px)
-        clamp(9px, 4vw, 20px)
-        7px;
-
-    pointer-events: none;
-
-    user-select: none;
-    -webkit-user-select: none;
+    gap: 12px;
+  }
+  .display-box {
+    padding: 20px 15px;
+  }
 }
-
-
-/* =========================
-   2FA INFORMATION
-========================= */
-
-.twofa-info {
-    width: 100%;
-
-    text-align: center;
-
-    flex: 0 0 auto;
-
-    /*
-     * একটু উপরে রাখা হয়েছে
-     */
-    margin-top: -3px;
-
-    margin-bottom:
-        clamp(8px, 1.8vh, 13px);
-}
-
-.twofa-title {
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(25px, 4.5vw, 19px);
-
-    line-height: 2;
-
-    font-weight: 900;
-
-    letter-spacing: 0.4px;
-
-    background:
-        linear-gradient(
-            90deg,
-            #ff006e,
-            #8338ec,
-            #3a86ff
-        );
-
-    -webkit-background-clip: text;
-    background-clip: text;
-
-    color: transparent;
-
-    /*
-     * দুই লাইনের মাঝে বেশি space
-     */
-    margin-bottom: 12px;
-
-    white-space: nowrap;
-}
-
-.twofa-description {
-    width: 100%;
-
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(9px, 3vw, 12px);
-
-    line-height: 1.3;
-
-    font-weight: 500;
-
-    color: #6b7280;
-
-    text-align: center;
-
-    white-space: nowrap;
-}
-
-
-/* =========================
-   ACTION ROW
-========================= */
-
-.action-row {
-    width: 100%;
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: space-between;
-
-    gap: 0;
-
-    flex: 0 0 auto;
-
-    margin-bottom:
-        clamp(8px, 1.6vh, 12px);
-}
-
-
-/* =========================
-   CREATOR BUTTON BOX
-========================= */
-
-.creator-mini {
-    width: 50%;
-
-    min-width: 0;
-
-    flex: 0 0 50%;
-
-    text-align: left;
-
-    font-family: Arial, sans-serif;
-
-    line-height: 1.15;
-
-    overflow: hidden;
-
-    /*
-     * Button-style box
-     */
-    padding:
-        clamp(7px, 1.8vw, 10px)
-        clamp(8px, 2.5vw, 13px);
-
-    border-radius:
-        clamp(7px, 2vw, 11px);
-
-    background:
-        linear-gradient(
-            135deg,
-            #f8f9ff,
-            #ffffff
-        );
-
-    border: 1px solid #e5e7eb;
-
-    box-shadow:
-        0 4px 12px
-        rgba(31, 41, 55, 0.07);
-
-    position: relative;
-}
-
-
-/* Small colorful line */
-
-.creator-mini::before {
-    content: "";
-
-    position: absolute;
-
-    left: 0;
-    top: 0;
-
-    width: 4px;
-    height: 100%;
-
-    border-radius:
-        8px 0 0 8px;
-
-    background:
-        linear-gradient(
-            180deg,
-            #ff006e,
-            #8338ec,
-            #3a86ff
-        );
-}
-
-
-.creator-mini-title {
-    font-size:
-        clamp(9px, 2.8vw, 12px);
-
-    font-weight: 500;
-
-    color: #6b7280;
-
-    white-space: nowrap;
-}
-
-.creator-mini-title strong {
-    color: #111827;
-
-    font-weight: 800;
-}
-
-.creator-mini-text {
-    margin-top: 4px;
-
-    font-size:
-        clamp(7.5px, 2.3vw, 10px);
-
-    color: #9ca3af;
-
-    font-weight: 500;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-}
-
-
-/* =========================
-   COPY BUTTON
-========================= */
-
-.copy-button {
-    width: 50%;
-
-    flex: 0 0 50%;
-
-    height:
-        clamp(43px, 9vw, 43px);
-
-    display: flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(10px, 3vw, 13px);
-
-    font-weight: 900;
-
-    letter-spacing: 1.2px;
-
-    color: #fff;
-
-    background:
-        linear-gradient(
-            135deg,
-            #ff006e 0%,
-            #8338ec 48%,
-            #3a86ff 100%
-        );
-
-    border-radius: 10px;
-
-    box-shadow:
-        0 5px 16px
-        rgba(131, 56, 236, 0.28),
-
-        0 4px 12px
-        rgba(255, 0, 110, 0.22);
-
-    pointer-events: none;
-
-    user-select: none;
-    -webkit-user-select: none;
-
-    white-space: nowrap;
-}
-
-
-/* =========================
-   PROFESSIONAL ICON
-========================= */
-
-.creator-icon {
-    width:
-        clamp(40px, 11vw, 52px);
-
-    height:
-        clamp(40px, 11vw, 52px);
-
-    min-width: 40px;
-    min-height: 40px;
-
-    max-width: 52px;
-    max-height: 52px;
-
-    flex: 0 0 auto;
-
-    border-radius: 50%;
-
-    background:
-        linear-gradient(
-            135deg,
-            #111827,
-            #374151
-        );
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    position: relative;
-
-    margin-bottom:
-        clamp(5px, 1.2vh, 8px);
-
-    box-shadow:
-        0 6px 18px
-        rgba(0,0,0,0.16);
-}
-
-
-/* Person Head */
-
-.creator-icon::before {
-    content: "";
-
-    position: absolute;
-
-    width: 28%;
-    height: 28%;
-
-    min-width: 11px;
-    min-height: 11px;
-
-    max-width: 15px;
-    max-height: 15px;
-
-    background: #fff;
-
-    border-radius: 50%;
-
-    top: 18%;
-}
-
-
-/* Person Body */
-
-.creator-icon::after {
-    content: "";
-
-    position: absolute;
-
-    width: 50%;
-    height: 27%;
-
-    min-width: 21px;
-    min-height: 10px;
-
-    max-width: 27px;
-    max-height: 14px;
-
-    background: #fff;
-
-    border-radius:
-        15px 15px 7px 7px;
-
-    bottom: 16%;
-}
-
-
-/* =========================
-   BRAND NAME
-========================= */
-
-.brand-name {
-    width: 100%;
-
-    flex: 0 0 auto;
-
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(16px, 5.2vw, 22px);
-
-    line-height: 1.15;
-
-    font-weight: 800;
-
-    color: #111827;
-
-    text-align: center;
-
-    letter-spacing: 0.2px;
-
-    white-space: nowrap;
-
-    overflow: hidden;
-
-    text-overflow: ellipsis;
-
-    margin-bottom: 3px;
-}
-
-
-/* =========================
-   CREATOR
-========================= */
-
-.creator-name {
-    width: 100%;
-
-    flex: 0 0 auto;
-
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(10px, 3vw, 13px);
-
-    line-height: 1.2;
-
-    font-weight: 500;
-
-    color: #6b7280;
-
-    text-align: center;
-
-    white-space: nowrap;
-}
-
-.creator-name strong {
-    color: #111827;
-
-    font-weight: 700;
-}
-
-
-/* =========================
-   DIVIDER
-========================= */
-
-.divider {
-    width: 75%;
-
-    height: 1px;
-
-    flex: 0 0 auto;
-
-    background:
-        linear-gradient(
-            90deg,
-            transparent,
-            #d7dbe5,
-            transparent
-        );
-
-    margin:
-        clamp(6px, 1.2vh, 10px)
-        0
-        clamp(5px, 1vh, 8px);
-}
-
-
-/* =========================
-   TERMS CARD
-========================= */
-
-.terms-card {
-    width: 100%;
-
-    max-width: 450px;
-
-    flex: 0 0 auto;
-
-    position: relative;
-
-    padding:
-        clamp(7px, 1.5vh, 12px)
-        clamp(10px, 3vw, 15px);
-
-    border-radius:
-        clamp(10px, 2.5vw, 14px);
-
-    background:
-        linear-gradient(
-            135deg,
-            #f8f9ff,
-            #ffffff
-        );
-
-    border: 1px solid #e7e9f1;
-
-    box-shadow:
-        0 5px 18px
-        rgba(31, 41, 55, 0.08);
-
-    overflow: hidden;
-}
-
-
-/* Colorful top border */
-
-.terms-card::before {
-    content: "";
-
-    position: absolute;
-
-    left: 0;
-    top: 0;
-
-    width: 100%;
-    height: 3px;
-
-    background:
-        linear-gradient(
-            90deg,
-            #ff006e,
-            #8338ec,
-            #3a86ff,
-            #00c6ff
-        );
-}
-
-
-/* =========================
-   TERMS TITLE
-========================= */
-
-.terms-title {
-    width: 100%;
-
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(10px, 3.2vw, 13px);
-
-    line-height: 1.2;
-
-    font-weight: 800;
-
-    color: #374151;
-
-    text-align: center;
-
-    margin-bottom: 6px;
-
-    text-transform: uppercase;
-
-    letter-spacing: 0.8px;
-
-    white-space: nowrap;
-}
-
-
-/* =========================
-   TERMS
-========================= */
-
-.terms {
-    width: 100%;
-
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(8.5px, 2.6vw, 11px);
-
-    line-height: 1.4;
-
-    color: #6b7280;
-
-    text-align: center;
-}
-
-.terms p {
-    margin:
-        clamp(2px, 0.4vh, 4px)
-        0;
-}
-
-
-/* =========================
-   COPYRIGHT
-========================= */
-
-.copyright {
-    width: 100%;
-
-    flex: 0 0 auto;
-
-    margin-top:
-        clamp(5px, 1vh, 7px);
-
-    font-family: Arial, sans-serif;
-
-    font-size:
-        clamp(7px, 2vw, 9px);
-
-    line-height: 1.2;
-
-    color: #9ca3af;
-
-    text-align: center;
-
-    white-space: nowrap;
-}
-
-
-/* =========================
-   SMALL HEIGHT
-========================= */
-
-@media (max-height: 600px) {
-
-    .hide-bottom {
-        padding-top: 4px;
-        padding-bottom: 4px;
-    }
-
-    .twofa-info {
-        margin-top: -4px;
-        margin-bottom: 6px;
-    }
-
-    .twofa-title {
-        font-size: 13px;
-        margin-bottom: 5px;
-    }
-
-    .twofa-description {
-        font-size: 8px;
-    }
-
-    .action-row {
-        margin-bottom: 6px;
-    }
-
-    .copy-button {
-        height: 38px;
-    }
-
-    .creator-mini {
-        padding-top: 6px;
-        padding-bottom: 6px;
-    }
-
-    .creator-icon {
-        width: 38px;
-        height: 38px;
-
-        min-width: 38px;
-        min-height: 38px;
-
-        margin-bottom: 4px;
-    }
-
-    .divider {
-        margin-top: 5px;
-        margin-bottom: 5px;
-    }
-
-    .terms-card {
-        padding-top: 6px;
-        padding-bottom: 6px;
-    }
-
-    .terms p {
-        margin: 1px 0;
-    }
-}
-
-
-/* =========================
-   VERY NARROW PHONE
-========================= */
-
-@media (max-width: 320px) {
-
-    .hide-bottom {
-        padding-left: 7px;
-        padding-right: 7px;
-    }
-
-    .twofa-title {
-        font-size: 12px;
-    }
-
-    .twofa-description {
-        font-size: 7px;
-    }
-
-    .creator-mini {
-        padding-left: 8px;
-        padding-right: 6px;
-    }
-
-    .creator-mini-title {
-        font-size: 8px;
-    }
-
-    .creator-mini-text {
-        font-size: 7px;
-    }
-
-    .copy-button {
-        height: 36px;
-
-        font-size: 9px;
-
-        letter-spacing: 0.8px;
-    }
-
-    .brand-name {
-        font-size: 15px;
-    }
-
-    .creator-name {
-        font-size: 9px;
-    }
-
-    .terms-title {
-        font-size: 8px;
-    }
-
-    .terms {
-        font-size: 7.5px;
-    }
-
-    .copyright {
-        font-size: 6.5px;
-    }
-}
-
 </style>
 </head>
 
-
 <body>
 
-<div class="webview">
+<!-- ব্যাকগ্রাউন্ড ইফেক্ট -->
+<div class="aurora-bg">
+  <div class="aurora a1"></div>
+  <div class="aurora a2"></div>
+  <div class="aurora a3"></div>
+</div>
+<div class="grid-overlay"></div>
 
+<!-- টোস্ট মেসেজ (১ লাইনে দেখাবে) -->
+<div id="toast">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+  <span id="toastMsg">Copied Successfully!</span>
+</div>
 
-    <!-- =====================
-         WEBSITE
-    ====================== -->
+<!-- মেইন কন্টেইনার -->
+<div class="main-container">
 
-    <iframe
-        src="https://www.twofa.co"
-        allow="clipboard-read; clipboard-write"
-        scrolling="no"
-        referrerpolicy="strict-origin-when-cross-origin">
-    </iframe>
+  <!-- হেডার -->
+  <div class="header">
+    <div class="brand-title">
+      TamimAnu
+      <svg class="verified-badge" viewBox="0 0 24 24">
+        <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/>
+      </svg>
+    </div>
+    <div class="brand-subtitle">Auto Verified System</div>
+    
+    <!-- লাইভ স্ট্যাটাস ব্যাজ (সবুজ) -->
+    <div class="live-status">
+      <span class="live-dot"></span>  status : Live (online) 
+    </div>
+  </div>
 
+  <!-- গ্লাস কার্ড -->
+  <div class="glass-card">
 
-    <!-- =====================
-         FIXED OVERLAY
-    ====================== -->
+    <!-- ডিসপ্লে সেকশন -->
+    <div class="display-section">
+      
+      <!-- নাম বক্স -->
+      <div class="display-box name-box" onclick="copyText('name', false)">
+        <span class="click-hint">Click to auto copy</span>
+        <div class="label">Name</div>
+        <div class="value-text" id="nameValue">—</div>
+      </div>
 
-    <div class="hide-bottom">
-
-
-        <!-- =====================
-             2FA INFORMATION
-        ====================== -->
-
-        <div class="twofa-info">
-
-            <div class="twofa-title">
-                Two-Factor Authentication
-            </div>
-
-            <div class="twofa-description">
-                Enter your verification code securely to complete authentication.
-            </div>
-
-        </div>
-
-
-        <!-- =====================
-             CREATOR + COPY
-        ====================== -->
-
-        <div class="action-row">
-
-
-            <!-- Creator Button Box -->
-
-            <div class="creator-mini">
-
-                <div class="creator-mini-title">
-                    Creator :
-                    <strong>Md Tamim</strong>
-                </div>
-
-                <div class="creator-mini-text">
-                    Secure • Professional • Reliable
-                </div>
-
-            </div>
-
-
-            <!-- Copy Button -->
-
-            <div class="copy-button">
-                COPY
-            </div>
-
-
-        </div>
-
-
-        <!-- =====================
-             PROFESSIONAL ICON
-        ====================== -->
-
-        <div class="creator-icon"></div>
-
-
-        <!-- =====================
-             BRAND
-        ====================== -->
-
-        <div class="brand-name">
-            Trending Academy Limited
-        </div>
-
-
-        <!-- =====================
-             CREATOR
-        ====================== -->
-
-        <div class="creator-name">
-             💠 <strong>Build Skills | Work Hard | Succeed.</strong>
-        </div>
-
-
-        <!-- =====================
-             DIVIDER
-        ====================== -->
-
-        <div class="divider"></div>
-
-
-        <!-- =====================
-             TERMS
-        ====================== -->
-
-        <div class="terms-card">
-
-            <div class="terms-title">
-                Terms &amp; Conditions
-            </div>
-
-            <div class="terms">
-
-                <p>
-                    This service is provided for
-                    educational and legitimate purposes only.
-                </p>
-
-                <p>
-                    Users are responsible for using the service
-                    only with accounts and credentials they own
-                    or are authorized to access.
-                </p>
-
-                <p>
-                    Do not use this service for unauthorized
-                    access, abuse, fraud, or any illegal activity.
-                </p>
-
-            </div>
-
-        </div>
-
-
-        <!-- =====================
-             COPYRIGHT
-        ====================== -->
-
-        <div class="copyright">
-            © 2026 Trending Academy Limited. All rights reserved.
-        </div>
-
+      <!-- নাম্বার বক্স -->
+      <div class="display-box number-box" onclick="copyText('number', false)">
+        <span class="click-hint">Click to auto copy</span>
+        <div class="label">Number</div>
+        <div class="value-text" id="numberValue">—</div>
+      </div>
 
     </div>
 
+    <!-- অ্যাকশন বাটন -->
+    <div class="action-buttons">
+      <button class="btn btn-name" onclick="generateName()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 1 0 2.1-5.9L21 8"></path></svg>
+        New Name
+      </button>
+      <button class="btn btn-number" onclick="generateNumber()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        New Number
+      </button>
+    </div>
+
+    <!-- ফুটার (২ লাইন) -->
+    <div class="footer">
+      <div class="footer-powered">Powered by</div>
+      <div class="footer-company">Trending Academy limited</div>
+    </div>
+
+  </div>
 </div>
 
-
 <script>
+const names = [
+  "Ayesha","Sumaiya","Mahi","Tania","Sadia","Nusrat","Mim","Anika","Sharmin","Nishi",
+  "Riya","Tonni","Purnima","Jannat","Faria","Nadia","Shirin","Lubna","Rumana","Sanika",
+  "Sanjida","Bristy","Mehazabien","Tahmina","Samira","Nafisa","Farzana","Moushumi","Keya",
+  "Shamima","Kanta","Trina","Dipa","Tumpa","Sultana","Anjuman","Farida","Nigar","Rebeka",
+  "Jesmin","Khadija","Munmun","Urmi","Sinthia","Lamia","Sarmin","Afia","Amina","Rokeya",
+  "Naznin","Mahira","Raisa","Shila","Nodi","Priyanka","Shormi","Tahiya","Laboni","Oishee",
+  "Moutushi","Jui","Trisha","Nilufa","Dalia","Rupali","Kajol","Farha","Rodela","Pinky",
+  "Meghla","Jerin","Nasrin","Ishrat","Salma","Shanta","Adiba","Shanjida","Julekha","Mou",
+  "Aleya","Konika","Nayma","Khushi","Pakhi","Jannatun","Sanjiya","Tabassum","Munia","Shafia",
+  "Sumona","Ruba","Zerin","Marufa","Mahmuda","Tasnia","Sweety","Tuli","Shahnaz","Tanima",
+  "Jeba","Falguni","Nasima","Ashfia","Naima","Sabina","Papia","Taniya","Moina","Jebin",
+  "Sohana","Rani","Monira","Tashfia","Kohinoor","Hasina","Nadira","Maliha","Sanji","Noorjahan",
+  "Rina","Sharifa","Arpita","Preeti","Lucky","Ruma","Laila","Rumpa","Rokhaya","Khodeza",
+  "Aysha","Bonya","Rakhi","Shuma","Fahmida","Munira","Raihana","Nushrat","Mehjabin","Zannat",
+  "Sumi","Chumki","Poly","Moni","Ripa","Nazma","Afroza","Sabnam","Labiba","Nodira",
+  "Tajkia","Simran","Mahiya","Aklima","Sabrina","Kamrun","Shireen","Fariah","Shahela",
+  "Shanzida","Afrin","Ishita","Mehnaz","Shimu","Rukaiya","Bithi","Moyna","Dristy",
+  "Nadiya","Shaila","Ananya","Oli","Afsana","Mita","Puja","Hasna","Jahanara","Sharmila",
+  "Tamanna","Orpita","Shama","Shabana","Amena","Muna","Shilpi","Chandni","Shaheen",
+  "Tanzila","Rajiya","Arzoo","Zakia","Shumi","Raihanah","Nuzhat","Sumaya","Shaira",
+  "Fariha","Sonia","Tanjila","Tanjima","Lopa","Fabiha","Nawar","Raihan","Ayman",
+  "Rojina","Shobnom","Juthika","Afsari","Malyha","Toma","Naira","Rizia","Dilruba",
+  "Mahjabeen","Rimi","Shanila","Jeny","Sanjina","Shokh","Anjum","Joya","Tisha",
+  "Bonna","Tasnim","Rabeya","Jannatul","Nabila","Lubaba","Shaheli","Zulekha","Razia"
+];
 
-(function () {
+// নাম জেনারেট
+function generateName() {
+  const el = document.getElementById("nameValue");
+  el.classList.remove("pop");
+  void el.offsetWidth; // ট্রিগার রিফ্লো
+  el.innerText = names[Math.floor(Math.random() * names.length)];
+  el.classList.add("pop");
+  
+  // জেনারেট হওয়ার সাথে সাথে অটো কপি
+  copyText('name', true);
+}
 
-    /*
-     * Screen-এর আসল height
-     */
+// নাম্বার জেনারেট
+function generateNumber() {
+  const prefixes = ["13","14","15","16","17","18","19"];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  let rest = "";
+  for (let i = 0; i < 8; i++) {
+    rest += Math.floor(Math.random() * 10);
+  }
+  
+  const el = document.getElementById("numberValue");
+  el.classList.remove("pop");
+  void el.offsetWidth;
+  el.innerText = "+880" + prefix + rest;
+  el.classList.add("pop");
+  
+  // জেনারেট হওয়ার সাথে সাথে অটো কপি
+  copyText('number', true);
+}
 
-    const screenHeight = window.innerHeight;
+// কপি ফাংশন (isAuto প্যারামিটার দিয়ে অটো নাকি ম্যানুয়াল বোঝা যাবে)
+function copyText(type, isAuto) {
+  const elId = type === 'name' ? 'nameValue' : 'numberValue';
+  const text = document.getElementById(elId).innerText;
+  
+  if (text === "—") return; // খালি থাকলে কপি হবে না
 
-    document.documentElement.style.setProperty(
-        '--screen-height',
-        screenHeight + 'px'
-    );
+  const toastMsg = document.getElementById("toastMsg");
+  // অটো কপি হলে মেসেজ ভিন্ন হবে
+  toastMsg.innerText = isAuto ? "Auto Copied Successfully!" : "Copied Successfully!";
 
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text).then(showToast).catch(() => fallbackCopy(text));
+  } else {
+    fallbackCopy(text);
+  }
+}
 
-    /*
-     * Overlay screen-এর 38%
-     * থেকে শুরু হবে।
-     */
+// ফলব্যাক কপি (পুরোনো ব্রাউজারের জন্য)
+function fallbackCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try {
+    document.execCommand("copy");
+    showToast();
+  } catch (e) {}
+  document.body.removeChild(ta);
+}
 
-    const overlayTop = screenHeight * 0.31;
+// টোস্ট মেসেজ দেখানো
+function showToast() {
+  const toast = document.getElementById("toast");
+  toast.classList.add("show");
+  clearTimeout(window.toastTimer);
+  window.toastTimer = setTimeout(() => {
+    toast.classList.remove("show");
+  }, 2500);
+}
 
-    document.documentElement.style.setProperty(
-        '--overlay-top',
-        overlayTop + 'px'
-    );
-
-})();
-
+// পেজ লোডে ডিফল্ট ভ্যালু জেনারেট (এবং অটো কপি হবে না, শুধু দেখাবে)
+window.onload = () => {
+  const nameEl = document.getElementById("nameValue");
+  const numEl = document.getElementById("numberValue");
+  
+  nameEl.innerText = names[Math.floor(Math.random() * names.length)];
+  nameEl.classList.add("pop");
+  
+  const prefixes = ["13","14","15","16","17","18","19"];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  let rest = "";
+  for (let i = 0; i < 8; i++) rest += Math.floor(Math.random() * 10);
+  
+  numEl.innerText = "+880" + prefix + rest;
+  numEl.classList.add("pop");
+};
 </script>
 
 </body>
